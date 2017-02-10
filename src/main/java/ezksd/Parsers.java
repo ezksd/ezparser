@@ -4,35 +4,54 @@ import java.util.List;
 import java.util.function.Predicate;
 
 public class Parsers {
-    static Predicate<Character> is(char c) {
+    public static Predicate<Character> is(char c) {
         return ch -> ch == c;
     }
-    static Parser<Byte> empty() {
+
+    public static Predicate<Byte> is(byte b) {
+        return b1 -> b1 == b;
+    }
+
+    public static Predicate<Byte> not(byte b) {
+        return by -> by != b;
+    }
+    public static Predicate<Byte> not(byte b1,byte b2) {
+        return by -> by != b1 && by != b2;
+    }
+
+    public static Parser<Byte> empty() {
         return b -> b.hasRemaining() ? Result.of(b.get()) : Result.fail();
     }
 
-    static Parser<Character> ofChar(char c) {
-        return empty().map(b -> (char) b.byteValue()).match(is(c));
+    public static Parser<String> match(Predicate<Byte> pred) {
+        return empty().match(pred).kleenPlus().map(Parsers::byteListToString);
     }
 
+    public static Parser<Byte> matchOnce(byte b) {
+        return empty().match(is(b));
+    }
 
-    static String listToString(List<Character> list) {
-        StringBuilder builder = new StringBuilder(list.size());
-        for (Character c : list) {
-            builder.append(c);
+    public static byte[] byteListToArray(List<Byte> list) {
+        byte[] r = new byte[list.size()];
+        int i = 0;
+        for (Byte b : list) {
+            r[i++] = b;
         }
-        return builder.toString();
+        return r;
     }
 
-    static int listToInt(List<Integer> list){
+    public static String byteListToString(List<Byte> list) {
+        return new String(byteListToArray(list));
+    }
+
+
+    static int listToInt(List<Integer> list) {
         int r = 0;
         for (Integer i : list) {
-            System.out.println(i);
             r = r * 10 + i;
         }
         return r;
     }
-    static Parser<String> alphaPaser = empty().match(Character::isAlphabetic).map(b -> (char) b.byteValue()).kleenPlus().map(Parsers::listToString);
 
-    static Parser<Integer> numberPaser = empty().match(Character::isDigit).map(b -> b.intValue() - '0').kleenPlus().map(Parsers::listToInt);
+
 }

@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+@FunctionalInterface
 public interface Parser<E> {
     Result<E> parse(ByteBuffer buffer);
 
@@ -19,6 +20,7 @@ public interface Parser<E> {
             return r.isSucess() ? r.map(f) : Result.fail();
         };
     }
+
 
     default Parser<E> match(Predicate<E> pred) {
         return b -> {
@@ -51,6 +53,10 @@ public interface Parser<E> {
         return b -> Result.of(parser.parse(b).toOptional());
     }
 
+    default <U> Parser<E> skip(Parser<U> that) {
+        return link(that).map(Pair::getFirst);
+    }
+
     default <U> Parser<AorB<E, U>> or(Parser<U> that) {
         return b -> {
             Result<E> r1;
@@ -65,6 +71,7 @@ public interface Parser<E> {
         };
     }
 
+
     default Parser<List<E>> kleenPlus() {
         return b -> {
             ArrayList<E> list = new ArrayList<>();
@@ -76,8 +83,15 @@ public interface Parser<E> {
         };
     }
 
-    default Parser<Optional<List<E>>> kleenStar() {
-        return b -> Result.of(kleenPlus().parse(b).toOptional());
+    default Parser<List<E>> kleenStar() {
+        return b -> {
+            ArrayList<E> list = new ArrayList<>();
+            Result<E> r;
+            while ((r = parse(b)).isSucess()) {
+                list.add(r.get());
+            }
+            return Result.of(list);
+        };
     }
 
 

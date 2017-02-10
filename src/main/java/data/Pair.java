@@ -1,13 +1,29 @@
 package data;
 
 public class Pair<E, S> {
-    E _1;
-    S _2;
+    public E first;
+    public S second;
 
     public Pair(E first, S second) {
-        this._1 = first;
-        this._2 = second;
+        this.first = first;
+        this.second = second;
     }
 
+    public E getFirst() {
+        return first;
+    }
 
+    public S getSecond() {
+        return second;
+    }
+
+    @Override
+    public int hashCode() {
+        return first.hashCode() + second.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object that) {
+        return that instanceof Pair && (this.first.equals(((Pair) that).first) && this.second.equals(((Pair) that).second));
+    }
 }

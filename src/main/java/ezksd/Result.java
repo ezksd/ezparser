@@ -21,10 +21,6 @@ public interface Result<E> {
         return isSucess() ? Optional.of(get()) : Optional.empty();
     }
 
-    default Result<E> match(Predicate<E> pred) {
-        return isSucess() && pred.test(get()) ? this : fail();
-    }
-
     default boolean test(Predicate<E> pred) {
         return isSucess() && pred.test(get());
     }
@@ -38,16 +34,11 @@ public interface Result<E> {
     }
 
     static <E> Result<E> of(E e) {
-        return new Success<E>(e);
-    }
-
-    @SuppressWarnings("unchecked")
-    default <U> Result<U> trans() {
-        return (Result<U>) this;
+        return new Success<>(e);
     }
 
     static <E> Result<E> fail() {
-        return new Fail<E>();
+        return new Fail<>();
     }
 
     class Success<E> implements Result<E> {
@@ -67,6 +58,7 @@ public interface Result<E> {
             return null;
         }
     }
+
 
 
 }
