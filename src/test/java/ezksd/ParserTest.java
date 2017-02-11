@@ -1,48 +1,55 @@
 package ezksd;
 
 
-import data.AorB;
-import data.Pair;
+import org.junit.Test;
+import parser.http.HttpMessage;
+import parser.http.HttpParser;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 
+import static ezksd.Parsers.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ParserTest {
-    static final Parser<String> alphaPaser = Parsers.match(Character::isAlphabetic);
-    static final Parser<Integer> numberPaser = Parsers.match(Character::isDigit).map(Integer::valueOf);
-
-    @org.junit.Test
-    public void testAlphatbet() {
-        ByteBuffer buffer = ByteBuffer.wrap("hehe132".getBytes());
-        assertEquals("hehe", alphaPaser.parse(buffer).get());
-    }
-
-    @org.junit.Test
-    public void testNumber() {
-        ByteBuffer buffer = ByteBuffer.wrap("1234567shdfj".getBytes());
-        assertEquals(1234567, numberPaser.parse(buffer).orELse(0).intValue());
-    }
 
     @org.junit.Test
     public void aplhabetAndNumber() {
-        ByteBuffer buffer1 = ByteBuffer.wrap("hehe132".getBytes());
-        ByteBuffer buffer2 = ByteBuffer.wrap("123hehe".getBytes());
-        Parser<AorB<String, Integer>> or = alphaPaser.or(numberPaser);
-        Parser<Pair<String, Integer>> link = alphaPaser.link(numberPaser);
-        Result<AorB<String, Integer>> r1 = or.parse(buffer1);
-        Result<AorB<String, Integer>> r2 = or.parse(buffer2);
-        assertTrue(r1.isSucess() && r1.get().instanceOf(String.class));
-        assertEquals("hehe", r1.get().getA());
-        System.out.println(r2.isSucess());
-        assertTrue(r2.isSucess() && r2.get().instanceOf(Integer.class));
-        assertEquals(123, r2.get().getB().intValue());
-
-        buffer1.position(0);
-        assertEquals(new Pair<>("hehe", 132), link.parse(buffer1).get());
+        Parser<Pair<String, Integer>> alphaAndNum =  matchString(Character::isAlphabetic).link(match(Character::isDigit).map(toInt));
+        Result<Pair<String, Integer>> r = alphaAndNum.parse("abc123");
+        assertTrue(r.isSucess());
+        System.out.println(r.get().first);
+        System.out.println(r.get().second);
+        assertEquals(new Pair<>("abc", 123), r.get());
     }
 
 
+    @Test
+    public void httpParserTest() {
+
+        try (SocketChannel ch = SocketChannel.open();){
+            ch.connect(new InetSocketAddress("baidu.com", 80));
+            String msg = "GET / HTTP/1.1\r\n" +
+                    "Host: baidu.com\r\n" +
+                    "Connection: keep-alive\r\n" +
+                    "Upgrade-Insecure-Requests: 1\r\n" +
+                    "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36\r\n" +
+                    "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n" +
+                    "Accept-Encoding: gzip, deflate, sdch, br\r\n" +
+                    "Accept-Language: en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4\r\n\r\n";
+            ch.write(ByteBuffer.wrap(msg.getBytes()));
+            ByteBuffer buff = ByteBuffer.allocate(1000);
+            int read = ch.read(buff);
+            buff.flip();
+            Result<HttpMessage.Resp> r = new HttpParser().parse(buff);
+            assertTrue(r.isSucess());
+            System.out.println(new String(r.get().getEntity()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
 }

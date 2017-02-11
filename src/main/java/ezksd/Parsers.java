@@ -1,13 +1,14 @@
 package ezksd;
 
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
+
+import static ezksd.Result.fail;
+import static ezksd.Result.of;
 
 public class Parsers {
-    public static Predicate<Character> is(char c) {
-        return ch -> ch == c;
-    }
-
     public static Predicate<Byte> is(byte b) {
         return b1 -> b1 == b;
     }
@@ -15,43 +16,83 @@ public class Parsers {
     public static Predicate<Byte> not(byte b) {
         return by -> by != b;
     }
-    public static Predicate<Byte> not(byte b1,byte b2) {
-        return by -> by != b1 && by != b2;
+
+    public static <T> Predicate<T> and(Predicate<T>... preds) {
+        return t -> {
+            for (Predicate<T> pred : preds) {
+                if (!pred.test(t))
+                    return false;
+            }
+            return true;
+        };
     }
 
-    public static Parser<Byte> empty() {
-        return b -> b.hasRemaining() ? Result.of(b.get()) : Result.fail();
+    public static <T> Predicate<T> or(Predicate<T>... preds) {
+        return t -> {
+            for (Predicate<T> pred : preds) {
+                if (pred.test(t))
+                    return true;
+            }
+            return false;
+        };
     }
 
-    public static Parser<String> match(Predicate<Byte> pred) {
-        return empty().match(pred).kleenPlus().map(Parsers::byteListToString);
-    }
-
-    public static Parser<Byte> matchOnce(byte b) {
-        return empty().match(is(b));
-    }
-
-    public static byte[] byteListToArray(List<Byte> list) {
+    static public final Function<List<Byte>, byte[]> toArray = list -> {
         byte[] r = new byte[list.size()];
         int i = 0;
         for (Byte b : list) {
             r[i++] = b;
         }
         return r;
+    };
+
+    @FunctionalInterface
+    public interface Statement {
+        void exec();
     }
 
-    public static String byteListToString(List<Byte> list) {
-        return new String(byteListToArray(list));
+    public static <E,R> R let(E val,Function<E,R> f){
+        return f.apply(val);
+    }
+
+    public static <E> E begin(Statement stat, Supplier<E> s) {
+        stat.exec();
+        return s.get();
+    }
+
+    static public final Function<List<Byte>, String> toString = toArray.andThen(String::new);
+
+    static public final Function<List<Byte>, Integer> toInt = toString.andThen(Integer::valueOf);
+
+    public static Parser<Byte> start() {
+        return b -> b.hasRemaining() ? of(b.get()) : fail();
+    }
+
+    public static Parser<Byte> matchOnce(Predicate<Byte> p) {
+        return start().test(p);
+    }
+
+    public static Parser<List<Byte>> match(Predicate<Byte> p) {
+        return matchOnce(p).star();
     }
 
 
-    static int listToInt(List<Integer> list) {
-        int r = 0;
-        for (Integer i : list) {
-            r = r * 10 + i;
-        }
-        return r;
+    public static Parser<String> matchString(Predicate<Byte> p) {
+        return match(p).map(toString);
     }
+
+    public static Parser<String> until(byte b) {
+        return matchString(not(b));
+    }
+
+    public static Parser<byte[]> matchByteArray() {
+        return start().star().map(toArray);
+    }
+
+    public static Parser<Integer> matchInt() {
+        return match(Character::isDigit).map(toInt);
+    }
+
 
 
 }

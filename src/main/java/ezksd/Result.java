@@ -1,40 +1,47 @@
 package ezksd;
 
-import data.Pair;
-
-import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 public interface Result<E> {
     E get();
 
-    default E orELse(E e) {
-        return isSucess() ? get() : e;
+    default E orELse(Supplier<E> s) {
+        return isSucess() ? get() : s.get();
     }
 
     default boolean isSucess() {
         return this instanceof Success;
     }
 
-    default Optional<E> toOptional() {
-        return isSucess() ? Optional.of(get()) : Optional.empty();
-    }
-
-    default boolean test(Predicate<E> pred) {
-        return isSucess() && pred.test(get());
-    }
-
     default <U> Result<U> map(Function<E, U> f) {
         return isSucess() ? of(f.apply(get())) : fail();
     }
 
-    default <S> Result<Pair<E, S>> combine(Result<S> that) {
-        return this.isSucess() && that.isSucess() ? of(new Pair<>(this.get(), that.get())) : fail();
+    default <U> Result<U> flatmap(Function<E, Result<U>> f) {
+        return isSucess() ? f.apply(get()) : fail();
+    }
+    default Result<E> match(Predicate<E> pred) {
+        return flatmap(r -> pred.test(r) ? of(r) : fail());
+    }
+
+    default Result<E> onFailExec(Supplier<?> stat) {
+        if(!isSucess())
+            stat.get();
+        return this;
+    }
+
+    default Result<E> or(Supplier<Result<E>> sup){
+        return isSucess()?this:sup.get();
     }
 
     static <E> Result<E> of(E e) {
         return new Success<>(e);
+    }
+
+    static <A, B> Result<Pair<A, B>> of(A a, B b) {
+        return of(new Pair<>(a, b));
     }
 
     static <E> Result<E> fail() {
@@ -58,7 +65,4 @@ public interface Result<E> {
             return null;
         }
     }
-
-
-
 }
