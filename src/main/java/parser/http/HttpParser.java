@@ -17,19 +17,29 @@ import static ezksd.Parsers.*;
 
 public class HttpParser {
 
-    static class HttpRequest {
-        public HttpRequest(String version, String statusCode, String reasonPhrase, Map<String, String> headers, byte[] entity) {
-            this.version = version;
-            this.statusCode = statusCode;
-            this.reasonPhrase = reasonPhrase;
+    static class HttpResponse {
+
+        static class StatusLine {
+            String version;
+            String statusCode;
+            String reasonPhrase;
+
+            public StatusLine(String version, String statusCode, String reasonPhrase) {
+                this.version = version;
+                this.statusCode = statusCode;
+                this.reasonPhrase = reasonPhrase;
+            }
+        }
+
+        HttpResponse(StatusLine status, Map<String, String> headers, byte[] entity) {
+            this.requestLine = status;
             this.headers = headers;
             this.entity = entity;
         }
 
-        String version;
-        String statusCode;
-        String reasonPhrase;
+        StatusLine requestLine;
         Map<String, String> headers = new HashMap<>();
+
         byte[] entity;
     }
 
@@ -39,13 +49,13 @@ public class HttpParser {
 
     @Test
     public void parse() {
-        Parser<String> notSpace = Parsers.match(not(SPACE));
-        Parser<String> notSemi = Parsers.match(not(SEMI,CR));
-        Parser<String> notCR = Parsers.match(not(CR));
-        Parser<Byte> matchSEMI = Parsers.matchOnce(SEMI);
-        Parser<Byte> matchSpace = Parsers.matchOnce(SPACE);
-        Parser<Byte> matchCRLF = Parsers.matchOnce(CR);
-        Parser<HashMap<String,String>> parseHeader = notSemi.skip(matchSEMI).skip(matchSpace).link(notCR).skip(matchCRLF)
+        Parser<String> notSpace = Parsers.matchString(not(SPACE));
+        Parser<String> notSemi = Parsers.matchString(not(SEMI, CR));
+        Parser<String> notCR = Parsers.matchString(not(CR));
+        Parser<Byte> matchSEMI = Parsers.match(SEMI);
+        Parser<Byte> matchSpace = Parsers.match(SPACE);
+        Parser<Byte> matchCRLF = Parsers.match(CR);
+        Parser<HashMap<String, String>> parseHeader = notSemi.skip(matchSEMI).skip(matchSpace).link(notCR).skip(matchCRLF)
                 .kleenPlus().map(list -> {
                     HashMap<String, String> map = new HashMap<>();
                     for (Pair<String, String> pair : list) {
@@ -54,13 +64,13 @@ public class HttpParser {
                     return map;
                 });
 
-        Parser<byte[]> parseEntity = empty().kleenStar().map(Parsers::byteListToArray);
+        Parser<byte[]> parseEntity = start().kleenStar().map(Parsers::byteListToArray);
 
-        Parser<HttpRequest> htttParser = notSpace
+        Parser<HttpResponse> htttParser = notSpace
                 .skip(matchSpace).link(notSpace).skip(matchSpace).link(notCR).skip(matchCRLF)
                 .link(parseHeader)
                 .link(parseEntity).map(p -> {
-                        return new HttpRequest(p.first.first.first.first, p.first.first.first.second, p.first.first.second, p.first.second, p.second);
+                    return new HttpResponse(p.first.first.first.first, p.first.first.first.second, p.first.first.second, p.first.second, p.second);
 
                 });
 
@@ -78,13 +88,13 @@ public class HttpParser {
             int count = ch.read(read);
             if (count > 0) {
                 read.flip();
-                Result<HttpRequest> parse = htttParser.parse(read);
-                HttpRequest request = parse.get();
+                Result<HttpResponse> parse = htttParser._parse_(read);
+                HttpResponse request = parse.get();
                 System.out.println(request.version);
                 System.out.println(request.statusCode);
                 System.out.println(request.reasonPhrase);
                 request.headers.forEach((a, b) -> System.out.println(a + ":" + b));
-                 System.out.println(new String(request.entity));
+                System.out.println(new String(request.entity));
 
             }
 
