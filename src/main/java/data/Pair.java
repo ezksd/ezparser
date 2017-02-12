@@ -1,29 +1,41 @@
 package data;
 
-public class Pair<E, S> {
-    public E first;
-    public S second;
+import java.util.Objects;
 
-    public Pair(E first, S second) {
-        this.first = first;
-        this.second = second;
+public interface Pair<T, S> {
+    static <T, S> Pair<T, S> of(T t, S s) {
+        return new PairImpl<T, S>(t, s);
     }
 
-    public E getFirst() {
-        return first;
+    T fisrt();
+
+    S second();
+
+    class PairImpl<T, S> implements Pair<T, S> {
+        final T first;
+        final S second;
+
+        public PairImpl(T first, S second) {
+            Objects.requireNonNull(first);
+            Objects.requireNonNull(second);
+            this.first = first;
+            this.second = second;
+        }
+
+        @Override
+        public T fisrt() {
+            return first;
+        }
+
+        @Override
+        public S second() {
+            return second;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof PairImpl && (fisrt().equals(((PairImpl) obj).fisrt()) && second().equals(((PairImpl) obj).second()));
+        }
     }
 
-    public S getSecond() {
-        return second;
-    }
-
-    @Override
-    public int hashCode() {
-        return first.hashCode() + second.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object that) {
-        return that instanceof Pair && (this.first.equals(((Pair) that).first) && this.second.equals(((Pair) that).second));
-    }
 }

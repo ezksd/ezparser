@@ -32,11 +32,10 @@ public class HttpParser implements Parser<HttpMessage.Resp> {
                         .link(until(LF))
                         .skip(LF)
                         .plus()
-//                        .map(list -> list.stream().collect(Collectors.toMap(p -> p.first, p -> p.second)));
-                        .map(list -> let(new HashMap<String, String>(), map -> begin(() -> list.forEach(p -> map.put(p.first, p.second)), () -> map)));
+                        .map(list -> let(new HashMap<String, String>(), map -> begin(() -> list.forEach(p -> map.put(p.fisrt(), p.second())), () -> map)));
          Parser<byte[]> entityparser = matchByteArray();
 
-         Parser<HttpMessage.Resp> respParser = reqLineParser.link(headerParser).link(entityparser).map(p -> new HttpMessage.Resp(p.first.first, p.first.second, p.second));
+         Parser<HttpMessage.Resp> respParser = reqLineParser.link(headerParser).link(entityparser).map(p -> new HttpMessage.Resp(p.fisrt().fisrt(), p.fisrt().second(), p.second()));
         return respParser.parse(buffer);
     }
 }

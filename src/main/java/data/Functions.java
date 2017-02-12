@@ -10,10 +10,10 @@ public interface Functions {
     }
 
     static <T,U,R> Function<Pair<T,U>,R> adpater(BiFunction<T,U,R> f) {
-        return pair -> f.apply(pair.first, pair.second);
+        return pair -> f.apply(pair.fisrt(), pair.second());
     }
 
     static <A,B,C,R> Function<Pair<Pair<A,B>,C>,R> adpater(TriFunction<A,B,C,R> f ){
-        return pair -> f.aplly(pair.first.first, pair.first.second, pair.second);
+        return pair -> f.aplly(pair.fisrt().fisrt(), pair.fisrt().second(), pair.second());
     }
 }

@@ -43,7 +43,7 @@ public interface Result<E> {
     }
 
     static <A, B> Result<Pair<A, B>> of(A a, B b) {
-        return of(new Pair<>(a, b));
+        return of(Pair.of(a, b));
     }
 
     static <E> Result<E> fail() {

@@ -43,7 +43,7 @@ public interface Parser<E> {
     }
 
     default <U> Parser<E> skip(Parser<U> p) {
-        return link(p).map(Pair::getFirst);
+        return link(p).map(Pair::fisrt);
     }
 
     default Parser<E> skip(Predicate<Byte> p) {
