@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
+import static data.Functions.adpater;
 import static ezksd.Parsers.*;
 
 public class HttpParser implements Parser<HttpMessage.Resp> {
@@ -16,20 +17,22 @@ public class HttpParser implements Parser<HttpMessage.Resp> {
 
     @Override
     public Result<HttpMessage.Resp> tryParse(ByteBuffer buffer) {
-         Parser<HttpMessage.Resp.StatusLine> reqLineParser =
+        Parser<HttpMessage.Resp.StatusLine> reqLineParser =
                 until(SP)
                         .skip(SP)
                         .link(matchInt())
                         .skip(SP)
                         .link(until(LF))
                         .skip(LF)
-                        .map(p -> new HttpMessage.Resp.StatusLine(p.first.first, p.first.second, p.second));
-         Parser<Map<String, String>> headerParser =
+                        .map(adpater(HttpMessage.Resp.StatusLine::new));
+
+        Parser<Map<String, String>> headerParser =
                 until(SEMI)
                         .skip(SEMI).skip(SP)
                         .link(until(LF))
                         .skip(LF)
                         .plus()
+//                        .map(list -> list.stream().collect(Collectors.toMap(p -> p.first, p -> p.second)));
                         .map(list -> let(new HashMap<String, String>(), map -> begin(() -> list.forEach(p -> map.put(p.first, p.second)), () -> map)));
          Parser<byte[]> entityparser = matchByteArray();
 

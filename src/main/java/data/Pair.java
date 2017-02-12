@@ -1,4 +1,4 @@
-package ezksd;
+package data;
 
 public class Pair<E, S> {
     public E first;
