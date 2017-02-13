@@ -14,6 +14,10 @@ import static ezksd.Parsers.*;
 public class Evaluator {
     static final byte PLUS = '+', MINUS = '-', MULTI = '*', DIVID = '/', LEFT = '(', RIGHT = ')';
 
+    public Result<Integer> evaluate(String s) {
+        return expr(ByteBuffer.wrap(s.getBytes()));
+    }
+
     static BinaryOperator<Integer> toOperator(byte by) {
         switch (by) {
             case PLUS:
@@ -31,12 +35,6 @@ public class Evaluator {
         return list.stream().reduce(i, (r, p) -> p.fisrt().apply(r, p.second()), (a, b) -> a + b);
     }
 
-    /*
-        expr ::= term ('+' term | '-' term) *
-        term :: = number ('*' number| '/' number) *
-        number ::=
-
-     */
 
     static Result<Integer> expr(ByteBuffer buffer) {
         Parser<Integer> term = Evaluator::term;
@@ -52,12 +50,5 @@ public class Evaluator {
         return matchInt().or(match(is(LEFT)).link(Evaluator::expr).skip(RIGHT).map(Pair::second)).parse(buffer);
     }
 
-    public static void main(String[] args) {
-        /*
-
-         */
-        Result<Integer> parser = expr(ByteBuffer.wrap("1+2*3-4/(2+2)".getBytes()));
-        System.out.println(parser.get());
-    }
 
 }

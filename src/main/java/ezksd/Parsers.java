@@ -21,13 +21,7 @@ public class Parsers {
     };
 
     public static final Function<List<Byte>, String> toString = toArray.andThen(String::new);
-    public static final Function<List<Byte>, Integer> toInt = list -> {
-        int r = 0;
-        for (Byte b : list) {
-            r += b - '0';
-        }
-        return r;
-    };
+    public static final Function<List<Byte>, Integer> toInt = toString.andThen(Integer::valueOf);
 
     public static Predicate<Byte> is(byte b) {
         return b1 -> b1 == b;
