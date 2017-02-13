@@ -1,24 +1,22 @@
 package parser.evaluator;
 
+import data.Funcs;
 import data.Pair;
 import ezksd.Parser;
 import ezksd.Result;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
+import java.util.function.Function;
 
-import static data.Functions.adpater;
+import static data.Funcs.adpater;
 import static ezksd.Parsers.*;
 
-public class Evaluator {
+public class Evaluator implements Parser<Integer> {
     static final byte PLUS = '+', MINUS = '-', MULTI = '*', DIVID = '/', LEFT = '(', RIGHT = ')';
-
-    public Result<Integer> evaluate(String s) {
-        return expr(ByteBuffer.wrap(s.getBytes()));
-    }
-
-    static BinaryOperator<Integer> toOperator(byte by) {
+    static Function<Byte, BinaryOperator<Integer>> toOp = by -> {
         switch (by) {
             case PLUS:
                 return (a, b) -> a + b;
@@ -26,24 +24,37 @@ public class Evaluator {
                 return (a, b) -> a - b;
             case MULTI:
                 return (a, b) -> a * b;
-            default:
+            case DIVID:
                 return (a, b) -> a / b;
+            default:
+                return null;
         }
-    }
+    };
+    static BiFunction<Integer, List<Function<Integer, Integer>>, Integer>
+            collect = (i, list) -> list.stream().reduce(i, Funcs.reverse(Function::apply), (a, b) -> a + b);
 
-    static int accumulate(int i, List<Pair<BinaryOperator<Integer>, Integer>> list) {
-        return list.stream().reduce(i, (r, p) -> p.fisrt().apply(r, p.second()), (a, b) -> a + b);
-    }
-
-
+//
     static Result<Integer> expr(ByteBuffer buffer) {
-        Parser<Integer> term = Evaluator::term;
-        return term.link(match(in(PLUS, MINUS)).map(Evaluator::toOperator).link(term).star()).map(adpater(Evaluator::accumulate)).parse(buffer);
+        return ((Parser<Integer>) Evaluator::term)
+                .link(
+                        match(in(PLUS, MINUS))
+                                .map(toOp)
+                                .link(Evaluator::term)
+                                .map(adpater(Funcs::partial))
+                                .star()
+                ).map(adpater(collect)).parse(buffer);
     }
 
     static Result<Integer> term(ByteBuffer buffer) {
-        Parser<Integer> number = Evaluator::number;
-        return number.link(match(in(MULTI, DIVID)).map(Evaluator::toOperator).link(number).star()).map(adpater(Evaluator::accumulate)).parse(buffer);
+        return ((Parser<Integer>) Evaluator::number)
+                .link(
+                        match(in(MULTI, DIVID))
+                                .map(toOp)
+                                .link(Evaluator::number)
+                                .map(adpater(Funcs::partial))
+                                .star()
+                ).map(adpater(collect)).parse(buffer);
+
     }
 
     static Result<Integer> number(ByteBuffer buffer) {
@@ -51,4 +62,8 @@ public class Evaluator {
     }
 
 
+    @Override
+    public Result<Integer> tryParse(ByteBuffer buffer) {
+        return expr(buffer);
+    }
 }

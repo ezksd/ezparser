@@ -14,8 +14,9 @@ import static ezksd.Parsers.*;
 @FunctionalInterface
 public interface Parser<E> {
     Result<E> tryParse(ByteBuffer buffer);
-    default Result<E> parse(ByteBuffer buffer){
-        return let(buffer.position(), p -> tryParse(buffer).onFailExec(()->buffer.position(p)));
+
+    default Result<E> parse(ByteBuffer buffer) {
+        return let(buffer.position(), p -> tryParse(buffer).onFailExec(() -> buffer.position(p)));
     }
 
     default <U> Parser<U> then(Supplier<U> sup) {

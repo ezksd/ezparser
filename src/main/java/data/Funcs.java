@@ -3,7 +3,7 @@ package data;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-public interface Functions {
+public interface Funcs {
     @FunctionalInterface
     interface TriFunction<T, S, U,R>{
         R aplly(T a, S b, U c);
@@ -19,5 +19,9 @@ public interface Functions {
 
     static <T, U, R> Function<T, R> partial(BiFunction<T, U, R> f, U u) {
         return a -> f.apply(a, u);
+    }
+
+    static <T, U, R> BiFunction<U,T,R> reverse(BiFunction<T, U, R> f) {
+        return (a, b) -> f.apply(b, a);
     }
 }

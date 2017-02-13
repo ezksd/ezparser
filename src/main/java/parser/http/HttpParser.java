@@ -7,7 +7,7 @@ import ezksd.Result;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-import static data.Functions.adpater;
+import static data.Funcs.adpater;
 import static ezksd.Parsers.*;
 
 public class HttpParser implements Parser<HttpMessage.Resp> {
