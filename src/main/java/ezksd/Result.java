@@ -28,6 +28,10 @@ public interface Result<E> {
         return flatmap(r -> pred.test(r) ? of(r) : fail());
     }
 
+    default <U> Result<U> onSucc(Supplier<U> sup) {
+        return map(e -> sup.get());
+    }
+
     default Result<E> onFailExec(Supplier<?> stat) {
         if(!isSucess())
             stat.get();

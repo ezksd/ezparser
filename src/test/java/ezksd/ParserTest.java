@@ -19,7 +19,7 @@ public class ParserTest {
 
     @org.junit.Test
     public void aplhabetAndNumber() {
-        Parser<Pair<String, Integer>> alphaAndNum =  matchString(Character::isAlphabetic).link(match(Character::isDigit).map(toInt));
+        Parser<Pair<String, Integer>> alphaAndNum =  matchString(Character::isAlphabetic).link(till(Character::isDigit).map(toInt));
         Result<Pair<String, Integer>> r = alphaAndNum.parse("abc123");
         assertTrue(r.isSucess());
         assertEquals(Pair.of("abc", 123), r.get());
@@ -41,6 +41,7 @@ public class ParserTest {
                     "Accept-Language: en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4\r\n\r\n";
             ch.write(ByteBuffer.wrap(msg.getBytes()));
             ByteBuffer buff = ByteBuffer.allocate(1000);
+            ch.read(buff);
             buff.flip();
             Result<HttpMessage.Resp> r = new HttpParser().parse(buff);
             assertTrue(r.isSucess());

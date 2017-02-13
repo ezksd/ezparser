@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import static ezksd.Parsers.*;
 
@@ -17,8 +18,8 @@ public interface Parser<E> {
         return let(buffer.position(), p -> tryParse(buffer).onFailExec(()->buffer.position(p)));
     }
 
-    default <R> Parser<R> then(Function<Result<E>, Result<R>> f) {
-        return b -> f.apply(parse(b));
+    default <U> Parser<U> then(Supplier<U> sup) {
+        return b -> parse(b).onSucc(sup);
     }
 
     default <U> Parser<U> map(Function<E, U> f) {
@@ -47,15 +48,15 @@ public interface Parser<E> {
     }
 
     default Parser<E> skip(Predicate<Byte> p) {
-        return skip(match(p));
+        return skip(till(p));
     }
 
     default Parser<E> skipAll(Predicate<Byte> p) {
-        return skip(match(p).star());
+        return skip(till(p).star());
     }
 
     default Parser<E> skip(byte c) {
-        return skip(matchOnce(is(c)));
+        return skip(match(is(c)));
     }
 
     default Parser<List<E>> plus() {
