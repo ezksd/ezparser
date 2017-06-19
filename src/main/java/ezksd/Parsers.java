@@ -1,82 +1,66 @@
 package ezksd;
 
+import data.Option;
 import data.Pair;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static ezksd.Result.fail;
-import static ezksd.Result.of;
-
 public class Parsers {
-    public static final Function<List<Byte>, byte[]> toArray = list -> {
-        byte[] r = new byte[list.size()];
-        int i = 0;
-        for (Byte b : list) {
-            r[i++] = b;
+    static boolean isNull(String s) {
+        return s == null || s.length() == 0;
+    }
+
+    public static Parser<Character> item() {
+        return s
+                -> Option.guard(!isNull(s)).map(x
+                -> new Pair<>(s.charAt(0), s.substring(1)));
+    }
+
+    public static Parser<Character> sat(Predicate<Character> pred) {
+        return item().test(pred);
+    }
+
+    public static Parser<Character> oneOf(String s) {
+        return sat(c -> s.indexOf(c) != -1);
+    }
+
+    public static Parser<Character> chr(char c) {
+        return sat(x -> x == c);
+    }
+
+    public static Parser<Integer> integer() {
+        Parser<Integer> num = sat(Character::isDigit)
+                .map(c -> c - '0')
+                .many1()
+                .map(list -> list.foldl((a, b) -> a * 10 + b,0));
+        return chr('-').skip(num).map(Math::negateExact)
+                .or(() -> num);
+    }
+
+    public static Parser<String> alpha() {
+        return sat(Character::isAlphabetic)
+                .many1()
+                .map(l -> l.foldl(StringBuffer::append,new StringBuffer()).toString());
+    }
+
+    public static Parser<String> symbol(String s) {
+        if (isNull(s)) {
+            return Parser.pure("");
+        } else {
+            return chr(s.charAt(0)).flatMap(h
+                    -> symbol(s.substring(1)).map(rest
+                    -> h + rest));
         }
-        return r;
-    };
-
-    public static final Function<List<Byte>, String> toString = toArray.andThen(String::new);
-    public static final Function<List<Byte>, Integer> toInt = toString.andThen(Integer::valueOf);
-
-    public static Predicate<Byte> is(byte b) {
-        return b1 -> b1 == b;
     }
 
-    public static Predicate<Byte> not(byte b) {
-        return by -> by != b;
+    public static Parser<Void> spaces() {
+        return sat(c -> Character.isISOControl(c)||Character.isWhitespace(c))
+                .many()
+                .flatMap(x -> Parser.VOID_PARSER);
     }
 
-    public static Predicate<Byte> in(byte... bytes) {
-        return by -> {
-            boolean flag = false;
-            for (byte b : bytes) {
-                if (by == b) {
-                    return true;
-                }
-            }
-            return false;
-        };
+    public static void main(String[] args){
+        System.out.println(symbol("abc").parse("abcd"));
     }
 
-    public static <E, R> R let(E val, Function<E, R> f) {
-        return f.apply(val);
-    }
-
-    static public <K, V> HashMap<K, V> toMap(List<Pair<K, V>> list) {
-        return list.stream().collect(HashMap::new, (map, pair) -> map.put(pair.fisrt(), pair.second()), HashMap::putAll);
-    }
-
-    public static Parser<Byte> start() {
-        return b -> b.hasRemaining() ? of(b.get()) : fail();
-    }
-
-    public static Parser<Byte> match(Predicate<Byte> p) {
-        return start().test(p);
-    }
-
-    public static Parser<List<Byte>> till(Predicate<Byte> p) {
-        return match(p).plus();
-    }
-
-    public static Parser<String> matchString(Predicate<Byte> p) {
-        return till(p).map(toString);
-    }
-
-    public static Parser<String> until(byte b) {
-        return matchString(not(b));
-    }
-
-    public static Parser<byte[]> matchByteArray() {
-        return start().star().map(toArray);
-    }
-
-    public static Parser<Integer> matchInt() {
-        return till(Character::isDigit).map(toInt);
-    }
 
 }

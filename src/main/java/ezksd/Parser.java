@@ -1,77 +1,128 @@
 package ezksd;
 
+import data.IList;
+import data.Option;
 import data.Pair;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import static ezksd.Parsers.*;
-
 @FunctionalInterface
-public interface Parser<E> {
-    Result<E> tryParse(ByteBuffer buffer);
+public interface Parser<T> {
+    Parser<Void> VOID_PARSER = pure(null);
+    Parser<?> EMPTY_PARSER = s -> Option.empty();
 
-    default Result<E> parse(ByteBuffer buffer) {
-        return let(buffer.position(), p -> tryParse(buffer).onFailExec(() -> buffer.position(p)));
+    static <T> Parser<T> pure(T t) {
+        return s -> Option.of(new Pair<>(t, s));
     }
 
-    default <U> Parser<U> then(Supplier<U> sup) {
-        return b -> parse(b).onSucc(sup);
+    @SuppressWarnings("unchecked")
+    static <T> Parser<T> fail() {
+        return (Parser<T>) EMPTY_PARSER;
     }
 
-    default <U> Parser<U> map(Function<E, U> f) {
-        return b -> parse(b).map(f);
+    static Parser<Void> guard(boolean b) {
+        if (b) {
+            return VOID_PARSER;
+        } else {
+            return fail();
+        }
     }
 
-    default Result<E> parse(String s) {
-        return parse(ByteBuffer.wrap(s.getBytes()));
+    Option<Pair<T, String>> parse(String input);
+
+    default <R> Parser<R> ap(Parser<Function<? super T, ? extends R>> parser) {
+        return flatMap(x
+                -> parser.flatMap(op
+                -> pure(op.apply(x))));
     }
 
-
-    default Parser<E> test(Predicate<E> p) {
-        return (b -> parse(b).match(p));
+    default <R> Parser<R> map(Function<? super T, ? extends R> f) {
+        return s
+                -> parse(s).map(pair
+                -> new Pair<>(f.apply(pair.left()), pair.right()));
     }
 
-    default <U> Parser<Pair<E, U>> link(Parser<U> p) {
-        return b -> parse(b).flatmap(r1 -> p.parse(b).flatmap(r2 -> Result.of(r1, r2)));
+    default <R> Parser<R> flatMap(Function<? super T, Parser<R>> f) {
+        return s
+                -> parse(s).flatMap(pair
+                -> f.apply(pair.left()).parse(pair.right()));
     }
 
-    default <U> Parser<E> or(Parser<E> p) {
-        return b -> parse(b).or(() -> p.parse(b));
+    default <R> Parser<R> skip(Parser<R> r) {
+        return flatMap(x -> r);
     }
 
-    default <U> Parser<E> skip(Parser<U> p) {
-        return link(p).map(Pair::fisrt);
+    default Parser<T> test(Predicate<? super T> pred) {
+        return flatMap(x
+                -> guard(pred.test(x)).map(y
+                -> x));
     }
 
-    default Parser<E> skip(Predicate<Byte> p) {
-        return skip(till(p));
-    }
-
-    default Parser<E> skipAll(Predicate<Byte> p) {
-        return skip(till(p).star());
-    }
-
-    default Parser<E> skip(byte c) {
-        return skip(match(is(c)));
-    }
-
-    default Parser<List<E>> plus() {
-        return b -> star().parse(b).match(l -> !l.isEmpty());
-    }
-
-    default Parser<List<E>> star() {
-        return b -> let(new ArrayList<E>(), list -> {
-            Result<E> r;
-            while ((r = parse(b)).isSucess()) {
-                list.add(r.get());
+    default Parser<T> or(Supplier<Parser<T>> that) {
+        return s -> {
+            Option<Pair<T, String>> o = this.parse(s);
+            if (o.isEmpty()) {
+                return that.get().parse(s);
+            } else {
+                return o;
             }
-            return Result.of(list);
-        });
+        };
+    }
+
+    default Parser<IList<T>> many() {
+        return many1().or(()
+                -> pure(IList.empty()));
+    }
+
+    default Parser<IList<T>> many1() {
+        return flatMap(x
+                -> many().flatMap(xs
+                -> pure(new IList<>(x, xs))));
+    }
+
+    default Parser<IList<T>> num(int n) {
+        if (n == 0) {
+            return pure(IList.empty());
+        } else {
+            return flatMap(x ->
+                    num(n - 1).map(xs ->
+                            new IList<>(x, xs)));
+        }
+    }
+
+    default Parser<T> token() {
+        return Parsers.spaces().flatMap(x -> this);
+    }
+
+    default <A> Parser<IList<T>> sepby1(Parser<A> separatoer) {
+        Parser<IList<T>> rest = separatoer.flatMap(x -> this).many();
+        return flatMap(x ->
+                rest.map(xs ->
+                        new IList<>(x, xs)));
+    }
+
+    default <A> Parser<IList<T>> sepby(Parser<A> parser) {
+        return sepby1(parser)
+                .or(() -> pure(IList.empty()));
+    }
+
+    default Parser<T> chainl1(Parser<BiFunction<T, T, T>> comb) {
+        Parser<Function<T, T>> unaryOp = comb.flatMap(op
+                -> map(x
+                -> t
+                -> op.apply(t, x)));
+        return flatMap(x ->
+                unaryOp.many().map(
+                        op -> op.foldr(Function::apply, x)));
+    }
+
+    default <A, B> Parser<T> bracket(Parser<A> left, Parser<B> right) {
+        return left.flatMap(l ->
+                flatMap(val ->
+                        right.map(r -> val)));
     }
 
 
