@@ -4,7 +4,7 @@ import java.util.Objects;
 import java.util.function.Function;
 
 public class Option<T> {
-    T val;
+    private T val;
     private static final Option<?> EMPTY = new Option<>(null);
     private static final Option<Void> VOID = new Option<>(null);
     private Option(T val) {

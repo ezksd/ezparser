@@ -1,4 +1,4 @@
-package evaluator;
+package parsers.evaluator;
 
 
 import data.IList;
@@ -15,25 +15,26 @@ import static java.lang.Math.negateExact;
 import static java.lang.Math.pow;
 
 public class Evaluator implements Parser<Double> {
+    private static final Parser<Double> impl = expr();
 
     @Override
     public Option<Pair<Double, String>> parse(String input) {
-        return expr().parse(input);
+        return impl.parse(input);
     }
 
-    Parser<Double> expr() {
+    private static Parser<Double> expr() {
         return factor().chainl1(oneOf("+-").token().map(Evaluator::trans));
     }
 
-    Parser<Double> factor(){
+    private static Parser<Double> factor(){
         return term().chainl1(oneOf("*/").token().map(Evaluator::trans));
     }
 
-    Parser<Double> term(){
+    private static Parser<Double> term(){
         return num().token().or(() -> expr().bracket(chr('(').token(),chr(')').token()));
     }
 
-    static Parser<Double> num() {
+    private static Parser<Double> num() {
         Function<IList<Integer>, Pair<Double, Integer>> collect = list
                 -> list.foldl((p, i)
                 -> new Pair<>(p.left() + i * pow(10d, negateExact(p.right())), p.right() + 1),
@@ -52,7 +53,7 @@ public class Evaluator implements Parser<Double> {
                 -> integer + dec));
     }
 
-    static BiFunction<Double,Double,Double> trans(char c) {
+    private static BiFunction<Double,Double,Double> trans(char c) {
         switch (c) {
             case '+':
                 return (a,b) -> a + b;

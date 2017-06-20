@@ -99,9 +99,9 @@ public interface Parser<T> {
 
     default <A> Parser<IList<T>> sepby1(Parser<A> separatoer) {
         Parser<IList<T>> rest = separatoer.flatMap(x -> this).many();
-        return flatMap(x ->
-                rest.map(xs ->
-                        new IList<>(x, xs)));
+        return flatMap(x
+                -> rest.map(xs
+                -> new IList<>(x, xs)));
     }
 
     default <A> Parser<IList<T>> sepby(Parser<A> parser) {
@@ -120,9 +120,10 @@ public interface Parser<T> {
     }
 
     default <A, B> Parser<T> bracket(Parser<A> left, Parser<B> right) {
-        return left.flatMap(l ->
-                flatMap(val ->
-                        right.map(r -> val)));
+        return left.flatMap(l
+                -> flatMap(val
+                -> right.map(r
+                -> val)));
     }
 
 

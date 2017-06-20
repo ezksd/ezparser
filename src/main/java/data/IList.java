@@ -17,6 +17,7 @@ public class IList<T> extends Pair<T, IList<T>> {
         return (IList<T>) EMPTY;
     }
 
+    @SafeVarargs
     public static <T> IList<T> of(T... xs) {
         Objects.requireNonNull(xs);
         IList<T> t = empty();

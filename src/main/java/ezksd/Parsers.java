@@ -58,9 +58,5 @@ public class Parsers {
                 .flatMap(x -> Parser.VOID_PARSER);
     }
 
-    public static void main(String[] args){
-        System.out.println(symbol("abc").parse("abcd"));
-    }
-
 
 }

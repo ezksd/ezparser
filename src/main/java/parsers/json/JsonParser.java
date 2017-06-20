@@ -15,9 +15,10 @@ import static java.lang.Math.pow;
 
 public class JsonParser implements Parser<JsonValue> {
 
-    static final String HEX = "0123456789ABCDEF";
+    private static final String HEX = "0123456789ABCDEF";
+    private static final Parser<JsonValue> impl = object().or(JsonParser::array);
 
-    static int sign(char c) {
+    private static int sign(char c) {
         if (c == '-') {
             return -1;
         } else {
@@ -44,12 +45,7 @@ public class JsonParser implements Parser<JsonValue> {
 
     }
 
-    @Override
-    public Option<Pair<JsonValue, String>> parse(String input) {
-        return object().or(this::array).parse(input);
-    }
-
-    Parser<String> string() {
+    static private Parser<String> string() {
         Parser<Character> escape = chr('\\').flatMap(h ->
                 oneOf("\"\\/bfnrt").map(x -> {
                     switch (x) {
@@ -84,7 +80,7 @@ public class JsonParser implements Parser<JsonValue> {
                 .bracket(chr('"'), chr('"'));
     }
 
-    Parser<JsonValue> number() {
+    static private Parser<JsonValue> number() {
         Parser<Character> sign = chr('-').or(() -> pure('+'));
         Function<IList<Integer>, Pair<Double, Integer>> collect = list
                 -> list.foldl((p, i)
@@ -105,34 +101,34 @@ public class JsonParser implements Parser<JsonValue> {
 
         return sign.flatMap(s
                 -> integer().flatMap(inte
-                        -> decimal.flatMap(dec
-                        -> exponent.map(exp
-                        ->
-                {
-                    if (dec < 0) {
-                        return new JsonInteger((int) (sign(s) * inte * pow(10, exp)));
-                    } else {
-                        return new JsonFloat(sign(s) * (inte + dec) * pow(10, exp));
-                    }
-                }))));
+                -> decimal.flatMap(dec
+                -> exponent.map(exp
+                ->
+        {
+            if (dec < 0) {
+                return new JsonInteger((int) (sign(s) * inte * pow(10, exp)));
+            } else {
+                return new JsonFloat(sign(s) * (inte + dec) * pow(10, exp));
+            }
+        }))));
     }
 
-    Parser<JsonValue> object() {
+    private static Parser<JsonValue> object() {
         Parser<Pair<String, JsonValue>> entry = string().token().flatMap(key
                 -> chr(':').token().flatMap(s
-                        -> value().map(val
-                        -> new Pair<>(key, val))));
+                -> value().map(val
+                -> new Pair<>(key, val))));
         return entry.sepby(chr(',').token()).bracket(chr('{').token(), chr('}').token()).map(JsonObject::new);
     }
 
-    Parser<JsonValue> array() {
+    private static Parser<JsonValue> array() {
         return value()
                 .sepby(chr(',').token())
                 .bracket(chr('[').token(), chr(']').token())
                 .map(JsonArray::new);
     }
 
-    Parser<JsonValue> value() {
+    private static Parser<JsonValue> value() {
         Parser<JsonValue> jsonString = string().token().map(JsonString::new);
         Parser<JsonValue> jsonNull = symbol("null").token().map(x -> JsonNull.Value);
         Parser<JsonValue> jsonBool = symbol("true").token().or(() -> symbol("false").token()).map(x -> {
@@ -144,11 +140,16 @@ public class JsonParser implements Parser<JsonValue> {
         });
 
         return object()
-                .or(this::array)
-                .or(this::number)
+                .or(JsonParser::array)
+                .or(JsonParser::number)
                 .or(() -> jsonString)
                 .or(() -> jsonBool)
                 .or(() -> jsonNull);
+    }
+
+    @Override
+    public Option<Pair<JsonValue, String>> parse(String input) {
+        return impl.parse(input);
     }
 
 
